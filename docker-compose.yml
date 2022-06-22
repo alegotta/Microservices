@@ -1,0 +1,151 @@
+version: "3"
+services:
+  apartments:
+    build: ./apartments
+    ports:
+      - "5001:5000"
+    environment:
+      - SVC_TYPE=apartments
+      - FLASK_ENV=development
+    volumes:
+      - ./data:/home/instance
+      - ./apartments:/home
+    restart: unless-stopped
+    healthcheck:
+      test: wget --spider -q http://localhost:5000/up
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    networks:
+      - intranet
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+
+  search:
+    build: ./search
+    ports:
+      - "5002:5000"
+    environment:
+      - SVC_TYPE=search
+      - FLASK_ENV=development
+    volumes:
+      - ./data:/home/instance
+      - ./search:/home
+    restart: unless-stopped
+    healthcheck:
+      test: wget --spider -q http://localhost:5000/up
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    networks:
+      - intranet
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+      apartments:
+        condition: service_healthy
+      reservations:
+        condition: service_healthy
+
+  reservations:
+    build: ./reservations
+    ports:
+      - "5003:5000"
+    environment:
+      - SVC_TYPE=reservations
+      - FLASK_ENV=development
+    volumes:
+      - ./data:/home/instance
+      - ./reservations:/home
+    restart: unless-stopped
+    healthcheck:
+      test: wget --spider -q http://localhost:5000/up
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    networks:
+      - intranet
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+      apartments:
+        condition: service_healthy
+
+  gateway:
+    build: ./gateway
+    ports:
+      - "5000:5000"
+    environment:
+      - SVC_TYPE=gateway
+      - FLASK_ENV=development
+    volumes:
+      - ./data:/home/instance
+      - ./gateway:/home
+    restart: unless-stopped
+    healthcheck:
+      test: wget --spider -q http://localhost:5000/up
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    networks:
+      - intranet
+    depends_on:
+      apartments:
+        condition: service_healthy
+      reservations:
+        condition: service_healthy
+      search:
+        condition: service_healthy
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+        - 5672:5672      # Message API
+        - 15672:15672    # HTTP Interface
+    volumes:
+        - mq_data:/var/lib/rabbitmq
+        #- mq_logs:/var/log/rabbitmq
+    restart: unless-stopped
+    #logging:
+    #  driver: none
+    networks:
+      - intranet
+    healthcheck:
+      test: rabbitmq-diagnostics -q status
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+  consul:
+    image: consul:latest
+    ports:
+      - "8500:8500"     # HTTP API (UI on /ui path)
+      - "8600:8600/tcp" # DNS server
+      - "8600:8600/udp" # same
+    command: "agent -server -bootstrap-expect=1 -ui -client 0.0.0.0"
+    volumes:
+        - consul_data:/consul/data
+    restart: unless-stopped
+    networks:
+      - intranet
+    healthcheck:
+      test: consul info
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+
+volumes:
+  mq_data:
+  #mq_logs:
+  consul_data:
+
+networks:
+  intranet:

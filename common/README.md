@@ -1,0 +1,3 @@
+# apartments-common
+
+Set of common functionalities that are used across all the services. Examples are rabbitmq and consul connection management, database operations, logging, etc...

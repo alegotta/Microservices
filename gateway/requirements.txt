@@ -1,0 +1,2 @@
+apartments-common==1.0.0
+pytest

@@ -1,0 +1,10 @@
+before_script:
+  - docker-compose -f docker-compose_prod.yml up --build -d
+  - sleep 60
+
+run_tests:
+  script:
+    - docker exec gateway sh -c 'pytest; exit $?';
+
+after_script:
+  - docker-compose -f docker-compose_prod.yml down
